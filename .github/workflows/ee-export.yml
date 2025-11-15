@@ -1,0 +1,41 @@
+name: Weekly Earth Engine Export
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"   # Every Monday at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install earthengine-api google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+
+      - name: Run export.py
+        env:
+          EE_SA_KEY: ${{ secrets.EE_SA_KEY }}
+          EE_SA_EMAIL: ${{ secrets.EE_SA_EMAIL }}
+          EXPORT_FOLDER_ID: ${{ secrets.EXPORT_FOLDER_ID }}
+          EXPORT_FOLDER: "EarthEngineExports"
+        run: python export.py
+
+      - name: Commit updated CSVs
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add data/*.csv || true
+          git commit -m "Weekly NDVI + Weather update" || echo "No changes"
+          git push
